@@ -7,8 +7,35 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+
+  # State Management
   provider: ^6.1.1
+
+  # HTTP for submission
   http: ^1.1.0
+
+  # Date formatting
   intl: ^0.18.1
+
+  # PDF generation
   pdf: ^3.10.4
   printing: ^5.12.0
+
+  # Local storage
+  shared_preferences: ^2.2.2
+
+  # Optional: For future offline file saving
+  path_provider: ^2.0.15
+
+  # Optional: Alternate datetime picker UI
+  flutter_datetime_picker: ^1.5.1
+
+  # Optional: Google Fonts
+  google_fonts: ^4.0.4
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+flutter:
+  uses-material-design: true

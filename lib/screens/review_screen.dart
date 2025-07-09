@@ -5,61 +5,57 @@ import 'package:http/http.dart' as http;
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import '../providers/score_provider.dart';
+import '../services/report_storage_service.dart';
+import '../services/pdf_generator.dart';
 
 class ReviewScreen extends StatelessWidget {
   Future<void> _submitData(BuildContext context) async {
     final provider = Provider.of<ScoreProvider>(context, listen: false);
     final jsonData = provider.toJson();
 
-    final response = await http.post(
-      Uri.parse('https://httpbin.org/post'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode(jsonData),
-    );
+    // ✅ Save to local storage safely
+    try {
+      await ReportStorageService.saveReport(jsonData);
+    } catch (e) {
+      print('⚠️ Error saving report locally: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Local save failed (but continuing)...')),
+      );
+    }
 
-    if (response.statusCode == 200) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Submitted successfully!')));
-      Navigator.popUntil(context, (route) => route.isFirst);
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Submission failed.')));
+    // ✅ Submit to API (updated to reliable endpoint)
+    try {
+      final response = await http.post(
+        Uri.parse('http://10.0.2.2:8000/submit'), // Use your local IP if testing on Android device
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(jsonData),
+      );
+
+
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Submitted successfully!')),
+        );
+        Navigator.popUntil(context, (route) => route.isFirst);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Submission failed.')),
+        );
+      }
+    } catch (e) {
+      print('❌ Submission error: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: Submission failed.')),
+      );
     }
   }
 
   void _generatePdf(BuildContext context) async {
     final provider = Provider.of<ScoreProvider>(context, listen: false);
-    final pdf = pw.Document();
+    final jsonData = provider.toJson();
 
-    pdf.addPage(
-      pw.MultiPage(
-        build: (pw.Context context) => [
-          pw.Text('Digital Score Card', style: pw.TextStyle(fontSize: 24)),
-          pw.SizedBox(height: 10),
-          pw.Text('Station: ${provider.stationName}'),
-          pw.Text('Date: ${provider.inspectionDate}'),
-          pw.SizedBox(height: 20),
-          ...provider.scores.entries.map((coachEntry) {
-            return pw.Column(children: [
-              pw.Text('Coach: ${coachEntry.key}', style: pw.TextStyle(fontSize: 18)),
-              ...coachEntry.value.entries.map((sectionEntry) {
-                return pw.Column(
-                  crossAxisAlignment: pw.CrossAxisAlignment.start,
-                  children: [
-                    pw.Text('  Section: ${sectionEntry.key}', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
-                    ...sectionEntry.value.entries.map((paramEntry) {
-                      final score = paramEntry.value['score'];
-                      final remarks = paramEntry.value['remarks'];
-                      return pw.Text('    ${paramEntry.key}: $score, Remarks: $remarks');
-                    }),
-                  ],
-                );
-              }),
-              pw.SizedBox(height: 10),
-            ]);
-          }),
-        ],
-      ),
-    );
-
+    // ✅ Use shared PdfGenerator
+    final pdf = await PdfGenerator.generateFromJson([jsonData]);
     await Printing.layoutPdf(onLayout: (format) async => pdf.save());
   }
 
@@ -80,12 +76,14 @@ class ReviewScreen extends StatelessWidget {
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Coach: ${coachEntry.key}', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  Text('Coach: ${coachEntry.key}',
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                   ...coachEntry.value.entries.map((sectionEntry) {
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('  Section: ${sectionEntry.key}', style: TextStyle(fontWeight: FontWeight.bold)),
+                        Text('  Section: ${sectionEntry.key}',
+                            style: TextStyle(fontWeight: FontWeight.bold)),
                         ...sectionEntry.value.entries.map((paramEntry) {
                           final score = paramEntry.value['score'];
                           final remarks = paramEntry.value['remarks'];

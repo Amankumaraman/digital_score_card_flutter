@@ -1,6 +1,8 @@
+// 📁 lib/screens/home_screen.dart
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'form_screen.dart';
+import 'report_list_screen.dart'; // <-- Import the report screen
 
 class HomeScreen extends StatefulWidget {
   @override
@@ -37,7 +39,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 errorBuilder: (_, __, ___) => Icon(Icons.train, size: 80),
               ),
               SizedBox(height: 20),
-              Text('Start Inspection', style: Theme.of(context).textTheme.titleLarge),
+              Text('Start Inspection',
+                  style: Theme.of(context).textTheme.titleLarge),
               SizedBox(height: 20),
               Form(
                 key: _formKey,
@@ -45,7 +48,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   children: [
                     TextFormField(
                       decoration: InputDecoration(labelText: 'Station Name'),
-                      validator: (v) => v!.isEmpty ? 'Enter station name' : null,
+                      validator: (v) =>
+                      v!.isEmpty ? 'Enter station name' : null,
                       onSaved: (v) => _stationName = v!,
                     ),
                     SizedBox(height: 10),
@@ -61,18 +65,34 @@ class _HomeScreenState extends State<HomeScreen> {
                       icon: Icon(Icons.arrow_forward),
                       label: Text('Start Scoring'),
                       onPressed: () {
-                        if (_formKey.currentState!.validate() && _selectedDate != null) {
+                        if (_formKey.currentState!.validate() &&
+                            _selectedDate != null) {
                           _formKey.currentState!.save();
                           Navigator.push(
                             context,
                             MaterialPageRoute(
                               builder: (_) => FormScreen(
                                 stationName: _stationName,
-                                inspectionDate: DateFormat('yyyy-MM-dd').format(_selectedDate!),
+                                inspectionDate: DateFormat('yyyy-MM-dd')
+                                    .format(_selectedDate!),
                               ),
                             ),
                           );
                         }
+                      },
+                    ),
+                    SizedBox(height: 20),
+
+                    // 🔍 View Past Reports Button
+                    ElevatedButton.icon(
+                      icon: Icon(Icons.folder_open),
+                      label: Text('View Past Reports'),
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (_) => ReportListScreen()),
+                        );
                       },
                     ),
                   ],
