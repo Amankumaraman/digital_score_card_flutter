@@ -1,3 +1,4 @@
+// 📁 lib/screens/review_screen.dart
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -13,24 +14,20 @@ class ReviewScreen extends StatelessWidget {
     final provider = Provider.of<ScoreProvider>(context, listen: false);
     final jsonData = provider.toJson();
 
-    // ✅ Save to local storage safely
     try {
       await ReportStorageService.saveReport(jsonData);
     } catch (e) {
-      print('⚠️ Error saving report locally: $e');
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Local save failed (but continuing)...')),
+        SnackBar(content: Text('Local save failed: $e')),
       );
     }
 
-    // ✅ Submit to API (updated to reliable endpoint)
     try {
       final response = await http.post(
-        Uri.parse('http://10.0.2.2:8000/submit'), // Use your local IP if testing on Android device
+        Uri.parse('http://10.0.2.2:8000/submit'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode(jsonData),
       );
-
 
       if (response.statusCode == 201 || response.statusCode == 200) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -43,7 +40,6 @@ class ReviewScreen extends StatelessWidget {
         );
       }
     } catch (e) {
-      print('❌ Submission error: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error: Submission failed.')),
       );
@@ -53,8 +49,6 @@ class ReviewScreen extends StatelessWidget {
   void _generatePdf(BuildContext context) async {
     final provider = Provider.of<ScoreProvider>(context, listen: false);
     final jsonData = provider.toJson();
-
-    // ✅ Use shared PdfGenerator
     final pdf = await PdfGenerator.generateFromJson([jsonData]);
     await Printing.layoutPdf(onLayout: (format) async => pdf.save());
   }
@@ -69,31 +63,66 @@ class ReviewScreen extends StatelessWidget {
         padding: const EdgeInsets.all(16.0),
         child: ListView(
           children: [
-            Text('Station: ${provider.stationName}', style: TextStyle(fontSize: 16)),
-            Text('Date: ${provider.inspectionDate}', style: TextStyle(fontSize: 16)),
-            SizedBox(height: 20),
+            Text('📍 Station: ${provider.stationName}',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500)),
+            Text('📅 Date: ${provider.inspectionDate}',
+                style: TextStyle(fontSize: 16)),
+            Divider(thickness: 2, height: 24),
+
             ...provider.scores.entries.map((coachEntry) {
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Coach: ${coachEntry.key}',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                  ...coachEntry.value.entries.map((sectionEntry) {
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('  Section: ${sectionEntry.key}',
-                            style: TextStyle(fontWeight: FontWeight.bold)),
-                        ...sectionEntry.value.entries.map((paramEntry) {
-                          final score = paramEntry.value['score'];
-                          final remarks = paramEntry.value['remarks'];
-                          return Text('    ${paramEntry.key}: $score, Remarks: $remarks');
-                        }).toList(),
-                      ],
-                    );
-                  }).toList(),
-                  SizedBox(height: 16),
-                ],
+              final coachName = coachEntry.key;
+              final sections = coachEntry.value;
+
+              return Card(
+                margin: EdgeInsets.symmetric(vertical: 12),
+                elevation: 2,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('🚆 Coach: $coachName',
+                          style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+                      SizedBox(height: 10),
+                      ...sections.entries.map((sectionEntry) {
+                        final sectionName = sectionEntry.key;
+                        final params = sectionEntry.value;
+
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '📌 Section: ${sectionName[0].toUpperCase()}${sectionName.substring(1)}',
+                              style: TextStyle(fontWeight: FontWeight.w600, color: Colors.indigo),
+                            ),
+                            DataTable(
+                              columnSpacing: 12,
+                              columns: const [
+                                DataColumn(label: Text('Parameter')),
+                                DataColumn(label: Text('Score')),
+                                DataColumn(label: Text('Remarks')),
+                              ],
+                              rows: params.entries.map((paramEntry) {
+                                final param = paramEntry.key;
+                                final data = paramEntry.value;
+                                final score = data['score'] ?? 0;
+                                final remarks = data['remarks'] ?? '';
+
+                                return DataRow(cells: [
+                                  DataCell(Text(param)),
+                                  DataCell(Text('$score')),
+                                  DataCell(Text(remarks)),
+                                ]);
+                              }).toList(),
+                            ),
+                            SizedBox(height: 12),
+                          ],
+                        );
+                      }).toList(),
+                    ],
+                  ),
+                ),
               );
             }).toList(),
           ],
