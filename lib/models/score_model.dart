@@ -1,4 +1,3 @@
-// 📁 lib/models/score_model.dart
 class AreaScore {
   int score;
   String remark;

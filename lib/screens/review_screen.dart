@@ -1,13 +1,12 @@
-// 📁 lib/screens/review_screen.dart
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
-import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import '../providers/score_provider.dart';
 import '../services/report_storage_service.dart';
 import '../services/pdf_generator.dart';
+import '../theme/app_theme.dart';
 
 class ReviewScreen extends StatelessWidget {
   Future<void> _submitData(BuildContext context) async {
@@ -16,6 +15,9 @@ class ReviewScreen extends StatelessWidget {
 
     try {
       await ReportStorageService.saveReport(jsonData);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Report saved locally')),
+      );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Local save failed: $e')),
@@ -36,12 +38,12 @@ class ReviewScreen extends StatelessWidget {
         Navigator.popUntil(context, (route) => route.isFirst);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Submission failed.')),
+          SnackBar(content: Text('Submission failed. Status: ${response.statusCode}')),
         );
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: Submission failed.')),
+        SnackBar(content: Text('Error: $e')),
       );
     }
   }
@@ -56,35 +58,75 @@ class ReviewScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final provider = Provider.of<ScoreProvider>(context);
+    final theme = Theme.of(context);
 
     return Scaffold(
-      appBar: AppBar(title: Text('Review Submission')),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: ListView(
+      appBar: AppBar(
+        title: Text('Review Submission'),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.picture_as_pdf),
+            onPressed: () => _generatePdf(context),
+            tooltip: 'Export PDF',
+          ),
+        ],
+      ),
+      body: SingleChildScrollView(
+        padding: EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('📍 Station: ${provider.stationName}',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500)),
-            Text('📅 Date: ${provider.inspectionDate}',
-                style: TextStyle(fontSize: 16)),
-            Divider(thickness: 2, height: 24),
+            Card(
+              elevation: 2,
+              child: Padding(
+                padding: EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.location_on, color: Colors.indigo),
+                        SizedBox(width: 8),
+                        Text('📍 Station: ${provider.stationName}',
+                            style: theme.textTheme.titleMedium),
+                      ],
+                    ),
+                    SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Icon(Icons.calendar_today, color: Colors.indigo),
+                        SizedBox(width: 8),
+                        Text('📅 Date: ${provider.inspectionDate}',
+                            style: theme.textTheme.bodyLarge),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            SizedBox(height: 16),
 
             ...provider.scores.entries.map((coachEntry) {
               final coachName = coachEntry.key;
               final sections = coachEntry.value;
 
               return Card(
-                margin: EdgeInsets.symmetric(vertical: 12),
+                margin: EdgeInsets.only(bottom: 16),
                 elevation: 2,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 child: Padding(
-                  padding: const EdgeInsets.all(16),
+                  padding: EdgeInsets.all(16),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('🚆 Coach: $coachName',
-                          style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
-                      SizedBox(height: 10),
+                      Row(
+                        children: [
+                          Icon(Icons.train, color: Colors.indigo),
+                          SizedBox(width: 8),
+                          Text('Coach: $coachName',
+                              style: theme.textTheme.titleMedium),
+                        ],
+                      ),
+                      SizedBox(height: 12),
                       ...sections.entries.map((sectionEntry) {
                         final sectionName = sectionEntry.key;
                         final params = sectionEntry.value;
@@ -93,28 +135,69 @@ class ReviewScreen extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              '📌 Section: ${sectionName[0].toUpperCase()}${sectionName.substring(1)}',
-                              style: TextStyle(fontWeight: FontWeight.w600, color: Colors.indigo),
+                              '${sectionName[0].toUpperCase()}${sectionName.substring(1)}',
+                              style: AppTheme.sectionHeaderStyle,
                             ),
-                            DataTable(
-                              columnSpacing: 12,
-                              columns: const [
-                                DataColumn(label: Text('Parameter')),
-                                DataColumn(label: Text('Score')),
-                                DataColumn(label: Text('Remarks')),
-                              ],
-                              rows: params.entries.map((paramEntry) {
-                                final param = paramEntry.key;
-                                final data = paramEntry.value;
-                                final score = data['score'] ?? 0;
-                                final remarks = data['remarks'] ?? '';
+                            SizedBox(height: 8),
+                            Table(
+                              border: TableBorder.all(
+                                color: Colors.grey.shade300,
+                                width: 1,
+                              ),
+                              children: [
+                                TableRow(
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey.shade100,
+                                  ),
+                                  children: [
+                                    Padding(
+                                      padding: EdgeInsets.all(8),
+                                      child: Text('Parameter',
+                                          textAlign: TextAlign.center,
+                                          style: TextStyle(
+                                              fontWeight: FontWeight.bold)),
+                                    ),
+                                    Padding(
+                                      padding: EdgeInsets.all(8),
+                                      child: Text('Score',
+                                          textAlign: TextAlign.center,
+                                          style: TextStyle(
+                                              fontWeight: FontWeight.bold)),
+                                    ),
+                                    Padding(
+                                      padding: EdgeInsets.all(8),
+                                      child: Text('Remarks',
+                                          textAlign: TextAlign.center,
+                                          style: TextStyle(
+                                              fontWeight: FontWeight.bold)),
+                                    ),
+                                  ],
+                                ),
+                                ...params.entries.map((paramEntry) {
+                                  final param = paramEntry.key;
+                                  final data = paramEntry.value;
+                                  final score = data['score'] ?? 0;
+                                  final remarks = data['remarks'] ?? '';
 
-                                return DataRow(cells: [
-                                  DataCell(Text(param)),
-                                  DataCell(Text('$score')),
-                                  DataCell(Text(remarks)),
-                                ]);
-                              }).toList(),
+                                  return TableRow(
+                                    children: [
+                                      Padding(
+                                        padding: EdgeInsets.all(8),
+                                        child: Text(param),
+                                      ),
+                                      Padding(
+                                        padding: EdgeInsets.all(8),
+                                        child: Text('$score',
+                                            textAlign: TextAlign.center),
+                                      ),
+                                      Padding(
+                                        padding: EdgeInsets.all(8),
+                                        child: Text(remarks),
+                                      ),
+                                    ],
+                                  );
+                                }).toList(),
+                              ],
                             ),
                             SizedBox(height: 12),
                           ],
@@ -128,23 +211,11 @@ class ReviewScreen extends StatelessWidget {
           ],
         ),
       ),
-      floatingActionButton: Column(
-        mainAxisAlignment: MainAxisAlignment.end,
-        children: [
-          FloatingActionButton.extended(
-            onPressed: () => _generatePdf(context),
-            icon: Icon(Icons.picture_as_pdf),
-            label: Text("Export PDF"),
-            heroTag: 'pdfBtn',
-          ),
-          SizedBox(height: 12),
-          FloatingActionButton.extended(
-            onPressed: () => _submitData(context),
-            icon: Icon(Icons.send),
-            label: Text("Submit"),
-            heroTag: 'submitBtn',
-          ),
-        ],
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => _submitData(context),
+        icon: Icon(Icons.send),
+        label: Text("Submit"),
+        backgroundColor: Colors.indigo,
       ),
     );
   }

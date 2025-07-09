@@ -1,9 +1,9 @@
-// 📁 lib/screens/report_list_screen.dart
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:printing/printing.dart';
 import '../services/report_storage_service.dart';
 import '../services/pdf_generator.dart';
+import '../theme/app_theme.dart';
 
 class ReportListScreen extends StatefulWidget {
   @override
@@ -60,62 +60,112 @@ class _ReportListScreenState extends State<ReportListScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Reports')),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            TextField(
-              decoration: InputDecoration(labelText: 'Filter by station'),
-              onChanged: (val) {
-                _stationFilter = val;
-                _loadReports();
-              },
-            ),
-            Row(
-              children: [
-                Expanded(
-                  child: ListTile(
-                    title: Text(_fromDate == null
-                        ? 'From Date'
-                        : DateFormat('yyyy-MM-dd').format(_fromDate!)),
-                    trailing: Icon(Icons.calendar_today),
-                    onTap: () => _pickDate(context, true),
-                  ),
-                ),
-                Expanded(
-                  child: ListTile(
-                    title: Text(_toDate == null
-                        ? 'To Date'
-                        : DateFormat('yyyy-MM-dd').format(_toDate!)),
-                    trailing: Icon(Icons.calendar_today),
-                    onTap: () => _pickDate(context, false),
-                  ),
-                ),
-              ],
-            ),
-            ElevatedButton.icon(
-              icon: Icon(Icons.picture_as_pdf),
-              label: Text('Export Filtered Reports'),
-              onPressed: _filteredReports.isEmpty ? null : _exportFilteredAsPdf,
-            ),
-            SizedBox(height: 20),
-            Expanded(
-              child: ListView.builder(
-                itemCount: _filteredReports.length,
-                itemBuilder: (_, i) {
-                  final report = _filteredReports[i];
-                  return Card(
-                    child: ListTile(
-                      title: Text(report['stationName'] ?? 'No Station'),
-                      subtitle: Text('Date: ${report['inspectionDate']}'),
+      appBar: AppBar(title: Text('Inspection Reports')),
+      body: Column(
+        children: [
+          Padding(
+            padding: EdgeInsets.all(16),
+            child: Card(
+              elevation: 2,
+              child: Padding(
+                padding: EdgeInsets.all(16),
+                child: Column(
+                  children: [
+                    TextField(
+                      decoration: InputDecoration(
+                        labelText: 'Filter by station',
+                        prefixIcon: Icon(Icons.search),
+                        border: OutlineInputBorder(),
+                      ),
+                      onChanged: (val) {
+                        _stationFilter = val;
+                        _loadReports();
+                      },
                     ),
-                  );
-                },
+                    SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: InkWell(
+                            onTap: () => _pickDate(context, true),
+                            child: InputDecorator(
+                              decoration: InputDecoration(
+                                labelText: 'From Date',
+                                prefixIcon: Icon(Icons.calendar_today),
+                              ),
+                              child: Text(
+                                _fromDate == null
+                                    ? 'Select Date'
+                                    : DateFormat('yyyy-MM-dd').format(_fromDate!),
+                              ),
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: 16),
+                        Expanded(
+                          child: InkWell(
+                            onTap: () => _pickDate(context, false),
+                            child: InputDecorator(
+                              decoration: InputDecoration(
+                                labelText: 'To Date',
+                                prefixIcon: Icon(Icons.calendar_today),
+                              ),
+                              child: Text(
+                                _toDate == null
+                                    ? 'Select Date'
+                                    : DateFormat('yyyy-MM-dd').format(_toDate!),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 16),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        icon: Icon(Icons.picture_as_pdf),
+                        label: Text('Export Filtered Reports'),
+                        onPressed: _filteredReports.isEmpty ? null : _exportFilteredAsPdf,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ],
-        ),
+          ),
+          Expanded(
+            child: _filteredReports.isEmpty
+                ? Center(
+              child: Text('No reports found',
+                  style: TextStyle(fontSize: 16)),
+            )
+                : ListView.builder(
+              itemCount: _filteredReports.length,
+              itemBuilder: (_, i) {
+                final report = _filteredReports[i];
+                return Card(
+                  margin: EdgeInsets.symmetric(
+                      horizontal: 16, vertical: 8),
+                  elevation: 2,
+                  child: ListTile(
+                    leading: Icon(Icons.article,
+                        color: Colors.indigo),
+                    title: Text(report['stationName'] ?? 'No Station',
+                        style: TextStyle(
+                            fontWeight: FontWeight.w500)),
+                    subtitle: Text(
+                        'Date: ${report['inspectionDate']}'),
+                    trailing: Icon(Icons.chevron_right),
+                    onTap: () {
+                      // Add functionality to view report details
+                    },
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
